@@ -38,7 +38,7 @@ VectorXd Tools::CalculateRMSE(const vector<VectorXd> &estimations,
   //accumulate squared residuals
   for(int i=0; i < estimations.size(); ++i){
 
-    // from answer, one less for-loop
+    // from Udacity answer, one less for-loop
     VectorXd difference = estimations[i] - ground_truth[i];
     VectorXd residual   = difference.array().square();
     rmse += residual;

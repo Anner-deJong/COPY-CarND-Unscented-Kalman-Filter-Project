@@ -12,13 +12,39 @@ public:
   
   ~UKF();
   
-  Eigen::MatrixXd x_;
-  
-  void ProcessMeasurement(MeasurementPackage meas_pack);
-  
+  // preferably x_ is a private member variable, only readable through some get_x()
+  // current main.cpp implementation however requires direct reading through object.x_ so it is public
+  // state matrix
+  Eigen::VectorXd x_;
+
   int a;
   
+  // functions
+  void ProcessMeasurement(const MeasurementPackage &meas_pack);
+  
   void printA(Eigen::Matrix2d m);
+
+private:
+
+	// include all other required matrices
+  bool _initialized; // bool for initialization
+  const int n_x; // int to keep track of state size
+
+  // state covariance matrix
+  Eigen::MatrixXd P;
+
+	// PREDICTION STEP
+	// generate sigma points
+  Eigen::MatrixXd GenerateSigmaPoints();
+
+
+	// predict sigma points
+	// predict mean and covariance
+	
+	// UPDATE STEP
+	// predict measurement
+	// update state
+
 
 };
 
