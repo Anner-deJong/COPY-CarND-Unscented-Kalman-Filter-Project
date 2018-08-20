@@ -29,14 +29,22 @@ private:
 	// include all other required matrices
   bool _initialized; // bool for initialization
   const int n_x; // int to keep track of state size
+  int n_aug; // size of augmentated state space
+  
+  // measurement standart deviations
+  const double std_a;
+  const double std_yawdd;
 
-  // state covariance matrix
+  // state and state covariance matrix
+  Eigen::VectorXd x;
   Eigen::MatrixXd P;
 
 	// PREDICTION STEP
-	// generate sigma points
+  // generate sigma points
   Eigen::MatrixXd GenerateSigmaPoints();
-
+  
+  // augment sigma points
+  void AugmentSigmaPoints(Eigen::MatrixXd *Xsig_aug);
 
 	// predict sigma points
 	// predict mean and covariance

@@ -4,11 +4,15 @@
 
 //ctor
 UKF::UKF():
-  n_x(5) // const state size
+  n_x(5), // const state size
+  std_a(-999), // std for longitudinal acceleration
+  std_yawdd(-999) // std for yaw acceleration
   {
   _initialized = false;
   P = Eigen::MatrixXd(n_x, n_x); // state covariance matrix
-  
+  n_aug = n_x + P.rows();
+  Eigen::MatrixXd Xsig_aug = Eigen::MatrixXd(n_aug, 2 * n_aug + 1);
+  // PROPERLY DECLARE ALL STD (std_a + std_yawdd)
   }
 
 //dtor
@@ -46,6 +50,35 @@ Eigen::MatrixXd UKF::GenerateSigmaPoints() {
 
   return Xsig;
 }
+
+// augment sigma points
+void UKF::AugmentSigmaPoints(Eigen::MatrixXd *Xsig_aug) {
+  
+  //create augmented mean state
+  Eigen::VectorXd x_aug = Eigen::VectorXd(7);
+  x_aug.head(n_x) = x;
+  x_aug.tail(n_aug - n_x).setZero();
+  
+  //create augmented covariance matrix
+  Eigen::MatrixXd P_aug = Eigen::MatrixXd(n_aug, n_aug);
+  P_aug.setZero();
+  P_aug.topLeftCorner(n_x, n_x) = P;
+  P_aug(n_aug-2, n_aug-2) = std_a*std_a;
+  P_aug(n_aug-1, n_aug-1) = std_yawdd*std_yawdd;
+  
+  //create square root matrix
+  // include the constant term sqrt(lambda + n_aug)
+  Eigen::MatrixXd P_sqrt = P_aug.llt().matrixL();
+  double lambda = 3 - n_x; // again, spreading parameter (seems like this could be reduced to single line)
+  P_sqrt *= sqrt(lambda + n_aug);
+  
+  //create augmented sigma points
+  Xsig_aug->colwise() = x_aug;
+  Xsig_aug->block(0,       1, n_aug, n_aug) += P_sqrt;
+  Xsig_aug->block(0, n_aug+1, n_aug, n_aug) -= P_sqrt;  
+  
+}
+
 
 // print function
 void UKF::printA(Eigen::Matrix2d m) {
