@@ -4,6 +4,9 @@
 #include "measurement_package.h"
 #include "Eigen/Dense"
 
+using Eigen::MatrixXd;
+using Eigen::VectorXd;
+
 class UKF {
 
 public:
@@ -30,7 +33,7 @@ private:
   bool _initialized; // bool for initialization
   const int n_x; // int to keep track of state size
   int n_aug; // size of augmentated state space
-  
+  double dt; // time difference in sec  
   // measurement standart deviations
   const double std_a;
   const double std_yawdd;
@@ -39,15 +42,17 @@ private:
   Eigen::VectorXd x;
   Eigen::MatrixXd P;
 
-	// PREDICTION STEP
+  // PREDICTION STEP
   // generate sigma points
   Eigen::MatrixXd GenerateSigmaPoints();
   
   // augment sigma points
-  void AugmentSigmaPoints(Eigen::MatrixXd *Xsig_aug);
+  void AugmentSigmaPoints(Eigen::MatrixXd &Xsig_aug);
 
-	// predict sigma points
-	// predict mean and covariance
+  // predict sigma points
+  void PredictSigmaPoints(MatrixXd &Xsig_pred, MatrixXd &Xsig_aug);
+  
+  // predict mean and covariance
 	
 	// UPDATE STEP
 	// predict measurement
