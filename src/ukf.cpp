@@ -9,7 +9,8 @@ UKF::UKF():
   std_yawdd(-999) // std for yaw acceleration
   {
   _initialized = false;
-  n_aug = n_x + P.rows();
+  n_aug = n_x + P_.rows();
+  //double lambda = 3 - n_x; // spreading parameter
   dt = 0;
   // PROPERLY DECLARE ALL STD (std_a + std_yawdd)
   }
@@ -21,8 +22,8 @@ UKF::~UKF() {
 void UKF::ProcessMeasurement(const MeasurementPackage &meas_pack) {
   if (!_initialized) {
     std::cout << "initializing!" << std::endl;
-    x_ = Eigen::VectorXd(n_x);
-    P  = Eigen::MatrixXd(n_x, n_x); // state covariance matrix
+    x_ = VectorXd(n_x);
+    P_ = MatrixXd(n_x, n_x); // state covariance matrix
     return;
   }
 
@@ -33,29 +34,36 @@ void UKF::ProcessMeasurement(const MeasurementPackage &meas_pack) {
   
   ////// Part A: PREDICTION STEP //////
   // Step 1: Generating (augmented) sigma points
-  Eigen::MatrixXd Xsig_aug(n_aug, 2 * n_aug + 1);
+  MatrixXd Xsig_aug(n_aug, 2 * n_aug + 1);
   AugmentSigmaPoints(Xsig_aug);
   
   // Step 2: Sigma point prediction
-  Eigen::MatrixXd Xsig_pred(n_x, 2 * n_aug + 1);
+  MatrixXd Xsig_pred(n_x, 2 * n_aug + 1);
   PredictSigmaPoints(Xsig_pred, Xsig_aug);
   
-  // Step 3: Predict state and covariance
+  // Step 3: Predict state mean and covariance
+  VectorXd x_pred(n_x);
+  MatrixXd P_pred(n_x, n_x);
+  PredictMeanAndCovariance(Xsig_pred);
   
-  
-  ////// Part B: PREDICTION STEP //////
+  ////// Part B: UPDATE STEP //////
   printA((Eigen::Matrix2d() << 1, 2, 3, 4).finished());
 }
+
+
+
+
+
+/// FUNCTION IMPLEMENTATIONS ///
 
 // generate sigma points function
 Eigen::MatrixXd UKF::GenerateSigmaPoints() {
   // initialize Xsig with each column as the state vector x
-  Eigen::MatrixXd Xsig(n_x, 2*n_x+1);
+  MatrixXd Xsig(n_x, 2*n_x+1);
   Xsig.colwise() = x_;
   
   // multiply the square root matrix of P with the square root constant of lambda - n_x
-  Eigen::MatrixXd A = P.llt().matrixL();
-  double lambda = 3 - n_x; // spreading parameter (seems like this could be reduced to single line)
+  MatrixXd A = P_.llt().matrixL();
   A *= sqrt(lambda + n_x);
 
   // add and subtract the A matrix at the correct slices within Xsig
@@ -69,21 +77,20 @@ Eigen::MatrixXd UKF::GenerateSigmaPoints() {
 void UKF::AugmentSigmaPoints(Eigen::MatrixXd &Xsig_aug) {
   
   //create augmented mean state
-  Eigen::VectorXd x_aug = Eigen::VectorXd(7);
-  x_aug.head(n_x) = x;
+  VectorXd x_aug(n_aug); 
+  x_aug.head(n_x) = x_;
   x_aug.tail(n_aug - n_x).setZero();
   
   //create augmented covariance matrix
-  Eigen::MatrixXd P_aug = Eigen::MatrixXd(n_aug, n_aug);
+  MatrixXd P_aug(n_aug, n_aug);
   P_aug.setZero();
-  P_aug.topLeftCorner(n_x, n_x) = P;
+  P_aug.topLeftCorner(n_x, n_x) = P_;
   P_aug(n_aug-2, n_aug-2) = std_a*std_a;
   P_aug(n_aug-1, n_aug-1) = std_yawdd*std_yawdd;
   
   //create square root matrix
   // include the constant term sqrt(lambda + n_aug)
-  Eigen::MatrixXd P_sqrt = P_aug.llt().matrixL();
-  double lambda = 3 - n_x; // again, spreading parameter (seems like this could be reduced to single line)
+  MatrixXd P_sqrt = P_aug.llt().matrixL();
   P_sqrt *= sqrt(lambda + n_aug);
   
   //create augmented sigma points
@@ -129,6 +136,31 @@ void UKF::PredictSigmaPoints(Eigen::MatrixXd &Xsig_pred, Eigen::MatrixXd &Xsig_a
   }
 }
 
+// Predict state mean and covariance
+void UKF::PredictMeanAndCovariance(MatrixXd &Xsig_pred) {
+  
+  //create and set vector for weights
+  VectorXd weights = VectorXd(2*n_aug+1); 
+  weights.setZero();
+  weights(0) = lambda / (lambda + n_aug);
+  weights.tail(2*n_aug).array() += 1 / (2*(lambda + n_aug));
+  
+  //predict state mean
+  MatrixXd tiled_weights      = weights.transpose().replicate(n_x, 1);
+  MatrixXd weighted_Xsig_pred = Xsig_pred.array() * tiled_weights.array();
+  x_ = weighted_Xsig_pred.rowwise().sum();
+  _normalize_angle(x_(3));
+  
+  //predict state covariance matrix
+  MatrixXd norm_Xsig_pred = Xsig_pred.colwise() - x_;
+  VectorXd tmp_vec = norm_Xsig_pred.row(3);
+  // This way of normalizing seems memory inefficient, isnt there a way to pass the row directly to a function??
+  _normalize_angle(tmp_vec);
+  norm_Xsig_pred.row(3) = tmp_vec;
+  MatrixXd weighted_norm_Xsig_pred = norm_Xsig_pred.array() * tiled_weights.array();
+  P_ = weighted_norm_Xsig_pred * norm_Xsig_pred.transpose();
+  
+}
 
 // print function
 void UKF::printA(Eigen::Matrix2d m) {
@@ -136,4 +168,13 @@ void UKF::printA(Eigen::Matrix2d m) {
   std::cout << "m = " << m << std::endl << std::endl;
 }
 
-
+// angle normalization
+void UKF::_normalize_angle(double &angle){
+  angle = atan2(sin(angle), cos(angle));
+}
+void UKF::_normalize_angle(VectorXd &angles){
+  for (int i=0; i<angles.size(); i++) {
+    _normalize_angle(angles[i]);
+  }
+  
+}

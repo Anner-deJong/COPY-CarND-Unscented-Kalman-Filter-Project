@@ -33,32 +33,36 @@ private:
   bool _initialized; // bool for initialization
   const int n_x; // int to keep track of state size
   int n_aug; // size of augmentated state space
-  double dt; // time difference in sec  
+  double lambda = 3 - n_x; // spreading parameter
+  double dt; // time difference in sec   
+  
   // measurement standart deviations
   const double std_a;
   const double std_yawdd;
 
-  // state and state covariance matrix
-  Eigen::VectorXd x;
-  Eigen::MatrixXd P;
+  // state covariance matrix
+  MatrixXd P_;
 
-  // PREDICTION STEP
-  // generate sigma points
-  Eigen::MatrixXd GenerateSigmaPoints();
-  
-  // augment sigma points
-  void AugmentSigmaPoints(Eigen::MatrixXd &Xsig_aug);
 
-  // predict sigma points
+  ////// Part A: PREDICTION STEP //////
+  // Step 1: Generating (augmented) sigma points
+  MatrixXd GenerateSigmaPoints();
+  void AugmentSigmaPoints(MatrixXd &Xsig_aug);
+
+  // Step 2: Sigma point predictio
   void PredictSigmaPoints(MatrixXd &Xsig_pred, MatrixXd &Xsig_aug);
   
-  // predict mean and covariance
-	
-	// UPDATE STEP
-	// predict measurement
-	// update state
+  // Step 3: Predict state mean and covariance
+  void PredictMeanAndCovariance(MatrixXd &Xsig_pred);
 
-
+  ////// Part B: UPDATE STEP //////
+  // predict measurement
+  // update state
+  
+  
+  /// Helper functions ///
+  void _normalize_angle(double &angle);
+  void _normalize_angle(VectorXd &angles);
 };
 
 
