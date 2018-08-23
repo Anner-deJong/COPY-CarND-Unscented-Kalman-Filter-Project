@@ -4,15 +4,32 @@
 
 //ctor
 UKF::UKF():
-  n_x(5), // const state size
-  std_a(-999), // std for longitudinal acceleration
-  std_yawdd(-999) // std for yaw acceleration
+  n_x(5) // const state size
   {
   _initialized = false;
   n_aug = n_x + P_.rows();
-  //double lambda = 3 - n_x; // spreading parameter
+  double lambda = 3 - n_x; // spreading parameter
   prev_timestamp = 0; // last measurment's timestamp for dt calculation
+  
+  /// Standard deviations and covariance matrices ///
   // PROPERLY DECLARE ALL STD (std_a + std_yawdd)
+  // process noise nu
+  std_a = -999;     // std for longitudinal acceleration
+  std_yawdd = -999; // std for yaw acceleration
+  
+  // Radar
+  double rdr_std_r   = 0.3;    // STD - radius in m
+  double rdr_std_phi = 0.0175; // STD - angle in rad
+  double rdr_std_rd  = 0.1;    // STD - radius change in m/s
+  R_radar << rdr_std_r  *  rdr_std_r, 0, 0,
+             0, rdr_std_phi*rdr_std_phi, 0,
+             0, 0, rdr_std_rd * rdr_std_rd;
+  
+  // Laser
+  double lsr_std_1 = -999;
+  double lsr_std_2 = -999;
+  R_laser << lsr_std_1*lsr_std_1, 0,
+             0, lsr_std_2*lsr_std_2;
   }
 
 //dtor
@@ -59,6 +76,7 @@ void UKF::ProcessMeasurement(const MeasurementPackage &meas_pack) {
   // Step 1: Predict measurements
   if (meas_pack.sensor_type_ == MeasurementPackage::RADAR) {
     // Radar measurement prediction
+    
   }
   else if (meas_pack.sensor_type_ == MeasurementPackage::LASER) {
     // Lidar measurement prediction
@@ -127,31 +145,31 @@ void UKF::PredictSigmaPoints(Eigen::MatrixXd &Xsig_pred, Eigen::MatrixXd &Xsig_a
       double p_x       = Xsig_aug(0, i);
       double p_y       = Xsig_aug(1, i);
       double v         = Xsig_aug(2, i);
-      double ups       = Xsig_aug(3, i);
-      double ups_d     = Xsig_aug(4, i);
+      double phi       = Xsig_aug(3, i);
+      double phi_d     = Xsig_aug(4, i);
       double nu_a      = Xsig_aug(5, i);
-      double nu_ups_dd = Xsig_aug(6, i);
+      double nu_phi_dd = Xsig_aug(6, i);
       
       // regular addition
       // use '> 0.001' instead of '==0' to prevent division by zero stability?
-      if (ups_d > 0.001) {
-          Xsig_pred(0, i) = p_x + v/ups_d*(sin(ups + ups_d*dt) - sin(ups));
-          Xsig_pred(1, i) = p_y + v/ups_d*(-cos(ups + ups_d*dt) + cos(ups));
+      if (phi_d > 0.001) {
+          Xsig_pred(0, i) = p_x + v/phi_d*(sin(phi + phi_d*dt) - sin(phi));
+          Xsig_pred(1, i) = p_y + v/phi_d*(-cos(phi + phi_d*dt) + cos(phi));
       }
       else {
-          Xsig_pred(0, i) = p_x + v*cos(ups)*dt;
-          Xsig_pred(1, i) = p_y + v*sin(ups)*dt;
+          Xsig_pred(0, i) = p_x + v*cos(phi)*dt;
+          Xsig_pred(1, i) = p_y + v*sin(phi)*dt;
       }
       Xsig_pred(2, i) = v;
-      Xsig_pred(3, i) = ups + ups_d * dt;
-      Xsig_pred(4, i) = ups_d;
+      Xsig_pred(3, i) = phi + phi_d * dt;
+      Xsig_pred(4, i) = phi_d;
       
       // nu addition
-      Xsig_pred(0, i) += 0.5 * dt_sq * cos(ups) * nu_a;
-      Xsig_pred(1, i) += 0.5 * dt_sq * sin(ups) * nu_a;
+      Xsig_pred(0, i) += 0.5 * dt_sq * cos(phi) * nu_a;
+      Xsig_pred(1, i) += 0.5 * dt_sq * sin(phi) * nu_a;
       Xsig_pred(2, i) +=       dt    * nu_a;
-      Xsig_pred(3, i) += 0.5 * dt_sq * nu_ups_dd;
-      Xsig_pred(4, i) +=       dt    * nu_ups_dd;
+      Xsig_pred(3, i) += 0.5 * dt_sq * nu_phi_dd;
+      Xsig_pred(4, i) +=       dt    * nu_phi_dd;
   }
 }
 

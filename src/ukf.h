@@ -36,14 +36,15 @@ private:
   double lambda; // spreading parameter for sigma point calculation
   double prev_timestamp; // last measurment's timestamp for dt calculation
   double dt; // time difference between measurements in sec
+  
+  /// Standard deviations and covariance matrices ///
+  // process noise nu
+  double std_a;
+  double std_yawdd;
 
-  // measurement standart deviations
-  const double std_a;
-  const double std_yawdd;
-
-  // state covariance matrix
-  MatrixXd P_;
-
+  MatrixXd P_; // state covariance matrix
+  MatrixXd R_radar; // Radar covariance matrix
+  MatrixXd R_laser; // Laser covatiance matrix
 
   ////// Part A: PREDICTION STEP //////
   // Step 1: Generating (augmented) sigma points
