@@ -48,22 +48,23 @@ private:
   MatrixXd R_laser; // Laser covatiance matrix
 
   ////// Part A: PREDICTION STEP //////
-  // Step 1: Generating (augmented) sigma points
+  // Step 1: Generate (augmented) sigma points
   MatrixXd GenerateSigmaPoints();
   void AugmentSigmaPoints(MatrixXd &Xsig_aug);
 
-  // Step 2: Sigma point predictio
+  // Step 2: Predict sigma points
   void PredictSigmaPoints(MatrixXd &Xsig_pred, MatrixXd &Xsig_aug);
   
   // Step 3: Predict state mean and covariance
   void PredictMeanAndCovariance(MatrixXd &Xsig_pred);
 
   ////// Part B: UPDATE STEP //////
-  // predict measurement
-  void PredictRadarMeasurement(VectorXd &z_pred, MatrixXd &S_pred, MatrixXd &Xsig_pred);
-  void PredictLaserMeasurement();
-  // update state
+  // Step 1: Predict (radar/laser) measurement
+  void PredictRadarMeasurement(VectorXd &z_pred, MatrixXd &Zsig, MatrixXd &S_pred, MatrixXd &Xsig_pred);
+  void PredictLaserMeasurement(VectorXd &z_pred, MatrixXd &Zsig, MatrixXd &S_pred, MatrixXd &Xsig_pred);
   
+  // Step 2: Update state mean and covariance
+  void UpdateState(MatrixXd &Xsig_pred, VectorXd &z_pred, VectorXd &z, MatrixXd &Zsig, MatrixXd &S_pred);
   
   /// Helper functions ///
   void _normalize_angle(double &angle);
