@@ -11,7 +11,7 @@ UKF::UKF():
   _initialized = false;
   n_aug = n_x + P_.rows();
   //double lambda = 3 - n_x; // spreading parameter
-  dt = 0;
+  prev_timestamp = 0; // last measurment's timestamp for dt calculation
   // PROPERLY DECLARE ALL STD (std_a + std_yawdd)
   }
 
@@ -22,15 +22,24 @@ UKF::~UKF() {
 void UKF::ProcessMeasurement(const MeasurementPackage &meas_pack) {
   if (!_initialized) {
     std::cout << "initializing!" << std::endl;
+    prev_timestamp = meas_pack.timestamp_;
     x_ = VectorXd(n_x);
     P_ = MatrixXd(n_x, n_x); // state covariance matrix
+    
+    if (meas_pack.sensor_type_ == MeasurementPackage::RADAR) {
+    
+    }
+    else if (meas_pack.sensor_type_ == MeasurementPackage::LASER) {
+      // x_ << meas_pack.raw_measurements_[0], meas_pack.raw_measurements_[1], 0, 0, 0;
+    }
+    _initialized = true;
     return;
   }
 
-  // else regular update step
-  
-  // TO BE DONE YET: SET dt CORRECTLY! 
-  dt = meas_pack.timestamp_;
+  // else: regular update step
+  // get time elapsed between last two measurements
+  dt = (meas_pack.timestamp_ - prev_timestamp) / 1000000.0; //dt expressed in seconds
+  prev_timestamp = meas_pack.timestamp_;
   
   ////// Part A: PREDICTION STEP //////
   // Step 1: Generating (augmented) sigma points
@@ -47,6 +56,16 @@ void UKF::ProcessMeasurement(const MeasurementPackage &meas_pack) {
   PredictMeanAndCovariance(Xsig_pred);
   
   ////// Part B: UPDATE STEP //////
+  // Step 1: Predict measurements
+  if (meas_pack.sensor_type_ == MeasurementPackage::RADAR) {
+    // Radar measurement prediction
+  }
+  else if (meas_pack.sensor_type_ == MeasurementPackage::LASER) {
+    // Lidar measurement prediction
+  }
+  
+  // Step 2: Update state
+  
   printA((Eigen::Matrix2d() << 1, 2, 3, 4).finished());
 }
 

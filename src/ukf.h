@@ -33,9 +33,10 @@ private:
   bool _initialized; // bool for initialization
   const int n_x; // int to keep track of state size
   int n_aug; // size of augmentated state space
-  double lambda = 3 - n_x; // spreading parameter
-  double dt; // time difference in sec   
-  
+  double lambda; // spreading parameter for sigma point calculation
+  double prev_timestamp; // last measurment's timestamp for dt calculation
+  double dt; // time difference between measurements in sec
+
   // measurement standart deviations
   const double std_a;
   const double std_yawdd;
