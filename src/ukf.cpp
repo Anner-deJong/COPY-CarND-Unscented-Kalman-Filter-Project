@@ -8,8 +8,9 @@ UKF::UKF():
   {
   _initialized = false;
   n_aug = n_x + P_.rows();
-  double lambda = 3 - n_x; // spreading parameter
+  // double lambda = 3 - n_x; // spreading parameter
   prev_timestamp = 0; // last measurment's timestamp for dt calculation
+  _initialize_weights(weights_);
   
   /// Standard deviations and covariance matrices ///
   // PROPERLY DECLARE ALL STD (std_a + std_yawdd)
@@ -41,7 +42,7 @@ void UKF::ProcessMeasurement(const MeasurementPackage &meas_pack) {
     std::cout << "initializing!" << std::endl;
     prev_timestamp = meas_pack.timestamp_;
     x_ = VectorXd(n_x);
-    P_ = MatrixXd(n_x, n_x); // state covariance matrix
+    P_ = MatrixXd(n_x, n_x); // state covariance matrix 
     
     if (meas_pack.sensor_type_ == MeasurementPackage::RADAR) {
     
@@ -76,7 +77,11 @@ void UKF::ProcessMeasurement(const MeasurementPackage &meas_pack) {
   // Step 1: Predict measurements
   if (meas_pack.sensor_type_ == MeasurementPackage::RADAR) {
     // Radar measurement prediction
+    int n_z = 3; // radar measurement space size
+    VectorXd z_pred = VectorXd(n_z); // predicted measurement
+    MatrixXd S_pred = MatrixXd(n_z, n_z); // predicted measurement covariance matrix
     
+    PredictRadarMeasurement(z_pred, S_pred, Xsig_pred);
   }
   else if (meas_pack.sensor_type_ == MeasurementPackage::LASER) {
     // Lidar measurement prediction
@@ -176,14 +181,8 @@ void UKF::PredictSigmaPoints(Eigen::MatrixXd &Xsig_pred, Eigen::MatrixXd &Xsig_a
 // Predict state mean and covariance
 void UKF::PredictMeanAndCovariance(MatrixXd &Xsig_pred) {
   
-  //create and set vector for weights
-  VectorXd weights = VectorXd(2*n_aug+1); 
-  weights.setZero();
-  weights(0) = lambda / (lambda + n_aug);
-  weights.tail(2*n_aug).array() += 1 / (2*(lambda + n_aug));
-  
   //predict state mean
-  MatrixXd tiled_weights      = weights.transpose().replicate(n_x, 1);
+  MatrixXd tiled_weights      = weights_.transpose().replicate(n_x, 1);
   MatrixXd weighted_Xsig_pred = Xsig_pred.array() * tiled_weights.array();
   x_ = weighted_Xsig_pred.rowwise().sum();
   _normalize_angle(x_(3));
@@ -199,10 +198,25 @@ void UKF::PredictMeanAndCovariance(MatrixXd &Xsig_pred) {
   
 }
 
+// predict radar measurement
+void UKF::PredictRadarMeasurement(VectorXd &z_pred, MatrixXd &S_pred, MatrixXd &Xsig_pred) {
+  // initialize both predicted measurement and covariance matrix with zeros
+  z_pred.setZero();
+  S_pred.setZero();
+  
+}
+
 // print function
 void UKF::printA(Eigen::Matrix2d m) {
   a = 3;
   std::cout << "m = " << m << std::endl << std::endl;
+}
+
+// initialize weight vector
+void UKF::_initialize_weights(VectorXd &weights) {
+  weights.setZero();
+  weights(0) = lambda / (lambda + n_aug);
+  weights.tail(2*n_aug).array() += 1 / (2*(lambda + n_aug));
 }
 
 // angle normalization

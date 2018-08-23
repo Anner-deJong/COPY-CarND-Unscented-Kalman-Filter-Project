@@ -36,6 +36,7 @@ private:
   double lambda; // spreading parameter for sigma point calculation
   double prev_timestamp; // last measurment's timestamp for dt calculation
   double dt; // time difference between measurements in sec
+  VectorXd weights_; // weights for part of the prediction and update steps
   
   /// Standard deviations and covariance matrices ///
   // process noise nu
@@ -59,12 +60,15 @@ private:
 
   ////// Part B: UPDATE STEP //////
   // predict measurement
+  void PredictRadarMeasurement(VectorXd &z_pred, MatrixXd &S_pred, MatrixXd &Xsig_pred);
+  void PredictLaserMeasurement();
   // update state
   
   
   /// Helper functions ///
   void _normalize_angle(double &angle);
   void _normalize_angle(VectorXd &angles);
+  void _initialize_weights(VectorXd &weights);
 };
 
 
