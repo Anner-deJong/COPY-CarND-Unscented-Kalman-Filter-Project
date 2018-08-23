@@ -73,14 +73,14 @@ void UKF::ProcessMeasurement(const MeasurementPackage &meas_pack) {
   MatrixXd P_pred(n_x, n_x);
   PredictMeanAndCovariance(Xsig_pred);
   
+  
   ////// Part B: UPDATE STEP //////
   // Step 1: Predict measurements
   if (meas_pack.sensor_type_ == MeasurementPackage::RADAR) {
     // Radar measurement prediction
     int n_z = 3; // radar measurement space size
     VectorXd z_pred = VectorXd(n_z); // predicted measurement
-    MatrixXd S_pred = MatrixXd(n_z, n_z); // predicted measurement covariance matrix
-    
+    MatrixXd S_pred = MatrixXd(n_z, n_z); // predicted measurement covariance matrix  
     PredictRadarMeasurement(z_pred, S_pred, Xsig_pred);
   }
   else if (meas_pack.sensor_type_ == MeasurementPackage::LASER) {
@@ -203,7 +203,34 @@ void UKF::PredictRadarMeasurement(VectorXd &z_pred, MatrixXd &S_pred, MatrixXd &
   // initialize both predicted measurement and covariance matrix with zeros
   z_pred.setZero();
   S_pred.setZero();
+  MatrixXd Zsig(z_pred.size(), 2*n_aug + 1);
   
+  for (int i=0 ; i < 2*n_aug + 1 ; i++ ) {
+    // store sigma points into seperate dimensions for readability
+    double p_x = Xsig_pred(0, i);
+    double p_y = Xsig_pred(1, i);
+    double v   = Xsig_pred(2, i);
+    double phi = Xsig_pred(3, i);
+    
+    //transform sigma points into measurement space
+    Zsig(0, i) = sqrt(p_x*p_x + p_y*p_y);               // rho
+    Zsig(1, i) = atan2(p_y, p_x);                       // phi
+    Zsig(2, i) = v*(p_x*cos(phi) + p_y*sin(phi))
+                       / sqrt(p_x*p_x + p_y*p_y);       // phi_dot
+    
+    //calculate mean predicted measurement
+    z_pred += weights_(i) * Zsig.col(i);
+  }
+  
+  //calculate innovation(?) covariance matrix S
+  VectorXd z_norm;
+  for (int i=0 ; i < 2*n_aug + 1 ; i++ ) {
+    z_norm = Zsig.col(i) - z_pred;
+    _normalize_angle(z_norm(1));
+    S_pred += weights_(i) * z_norm * z_norm.transpose();
+  }
+  // Adding the measurement covariance noise matrix to state covariance matrix
+  S_pred += R_radar;
 }
 
 // print function
