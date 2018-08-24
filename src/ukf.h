@@ -24,18 +24,16 @@ public:
   
   // functions
   void ProcessMeasurement(const MeasurementPackage &meas_pack);
-  
   void printA(Eigen::Matrix2d m);
 
 private:
 
-	// include all other required matrices
-  bool _initialized; // bool for initialization
   const int n_x; // int to keep track of state size
   const int n_aug; // size of augmentated state space
   const int n_z_rdr; // radar measurement space size
   const int n_z_lsr; // laser measurement space size
 
+  bool _initialized; // bool for initialization
   double lambda; // spreading parameter for sigma point calculation
   double prev_timestamp; // last measurment's timestamp for dt calculation
   double dt; // time difference between measurements in sec

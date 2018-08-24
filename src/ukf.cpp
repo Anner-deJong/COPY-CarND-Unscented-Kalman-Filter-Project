@@ -11,7 +11,7 @@ UKF::UKF():
   
   {
   _initialized = false;
-  // double lambda = 3 - n_x; // spreading parameter
+  lambda = 3 - n_x; // spreading parameter
   prev_timestamp = 0; // last measurment's timestamp for dt calculation
   _initialize_weights(weights_);
   
@@ -49,6 +49,7 @@ UKF::UKF():
   R_laser = MatrixXd(n_z_lsr, n_z_lsr);
   R_laser << lsr_std_px*lsr_std_px, 0,
              0, lsr_std_py*lsr_std_py;
+  
   }
 
 //dtor
@@ -57,7 +58,6 @@ UKF::~UKF() {
 
 void UKF::ProcessMeasurement(const MeasurementPackage &meas_pack) {
   if (!_initialized) {
-    std::cout << "initializing!" << std::endl;
     prev_timestamp = meas_pack.timestamp_;
     x_ = VectorXd(n_x);
     // P_ = MatrixXd(n_x, n_x); // state covariance matrix 
@@ -76,6 +76,7 @@ void UKF::ProcessMeasurement(const MeasurementPackage &meas_pack) {
 
   // else: regular update step
   // get time elapsed between last two measurements
+  std::cout << "2nd round, x_: " << x_ << std::endl;
   dt = (meas_pack.timestamp_ - prev_timestamp) / 1000000.0; //dt expressed in seconds
   prev_timestamp = meas_pack.timestamp_;
   
@@ -83,15 +84,18 @@ void UKF::ProcessMeasurement(const MeasurementPackage &meas_pack) {
   // Step 1: Generate (augmented) sigma points
   MatrixXd Xsig_aug(n_aug, 2 * n_aug + 1);
   AugmentSigmaPoints(Xsig_aug);
+  std::cout << "Finished Part A Step 1" << std::endl;
   
   // Step 2: Predict sigma points
   MatrixXd Xsig_pred(n_x, 2 * n_aug + 1);
   PredictSigmaPoints(Xsig_pred, Xsig_aug);
+  std::cout << "Finished Part A Step 2" << std::endl;
   
   // Step 3: Predict state mean and covariance
   VectorXd x_pred(n_x);
   MatrixXd P_pred(n_x, n_x);
   PredictMeanAndCovariance(Xsig_pred);
+  std::cout << "Finished Part A Step 3" << std::endl;
   
   
   ////// Part B: UPDATE STEP //////
@@ -103,6 +107,7 @@ void UKF::ProcessMeasurement(const MeasurementPackage &meas_pack) {
    
   if (meas_pack.sensor_type_ == MeasurementPackage::RADAR) {
     // Radar measurement prediction
+    std::cout << "Entering Part B Step 1 radar" << std::endl;
     z_pred = VectorXd(n_z_rdr);
     S_pred = MatrixXd(n_z_rdr, n_z_rdr);
     Zsig   = MatrixXd(n_z_rdr, 2*n_aug + 1);
@@ -119,16 +124,19 @@ void UKF::ProcessMeasurement(const MeasurementPackage &meas_pack) {
     S_pred = MatrixXd(n_z_lsr, n_z_lsr);
     Zsig   = MatrixXd(n_z_lsr, 2*n_aug + 1);
     PredictLaserMeasurement(z_pred, Zsig, S_pred, Xsig_pred);
+    std::cout << "finished preLaMea Part B Step 1 laser" << std::endl;
 
     // filling z with the correct raw measurement data
     z = VectorXd(n_z_lsr);
     z << meas_pack.raw_measurements_[0], meas_pack.raw_measurements_[1];
   }
+  std::cout << "Finished Part B Step 1" << std::endl;
   
   // Step 2: Update state
   UpdateState(Xsig_pred, z_pred, z, Zsig, S_pred);
+  std::cout << "Finished Part B Step 2" << std::endl;
   
-  printA((Eigen::Matrix2d() << 1, 2, 3, 4).finished());
+  //printA((Eigen::Matrix2d() << 1, 2, 3, 4).finished());
 }
 
 
@@ -260,7 +268,9 @@ void UKF::PredictLaserMeasurement(VectorXd &z_pred, MatrixXd &Zsig, MatrixXd &S_
   
   // calculate mean predicted measurement
   // better for readability, but for loop will likely be more computationally efficient
+  std::cout << "Inside1 Part B Step 1 laser" << std::endl;
   Zsig = Xsig_pred.block(0, 0, n_z_lsr, 2*n_aug+1).array();
+  std::cout << "Inside2 B Step 1 laser" << std::endl;
   MatrixXd Zsig_weighted = Zsig.array().rowwise() * weights_.transpose().array();
   z_pred = Zsig_weighted.rowwise().sum();
   
@@ -270,8 +280,12 @@ void UKF::PredictLaserMeasurement(VectorXd &z_pred, MatrixXd &Zsig, MatrixXd &S_
     z_norm = Zsig.col(i) - z_pred;
     S_pred += weights_(i) * z_norm * z_norm.transpose();
   }
+  std::cout << "Inside2.1 B Step 1 laser" << std::endl;
   // Adding the measurement covariance noise matrix to state covariance matrix
-  S_pred += R_radar;
+  std::cout << "S_pred size: " << S_pred.rows() << " x " << S_pred.cols() << std::endl;
+  std::cout << "R_radar size: " << R_radar.rows() << " x " << R_radar.cols() << std::endl;
+  S_pred += R_laser;
+  std::cout << "Inside3 B Step 1 laser" << std::endl;
 }
 
 // Part B Step 2: Update state mean and covariance
@@ -304,13 +318,12 @@ void UKF::UpdateState(MatrixXd &Xsig_pred, VectorXd &z_pred, VectorXd &z, Matrix
 
 // print function
 void UKF::printA(Eigen::Matrix2d m) {
-  a = 3;
   std::cout << "m = " << m << std::endl << std::endl;
 }
 
 // initialize weight vector
 void UKF::_initialize_weights(VectorXd &weights) {
-  weights.setZero();
+  weights = VectorXd(2*n_aug + 1);
   weights(0) = lambda / (lambda + n_aug);
   weights.tail(2*n_aug).array() += 1 / (2*(lambda + n_aug));
 }
@@ -325,7 +338,7 @@ void UKF::_normalize_angle(VectorXd &angles) {
   }
 }
 void UKF::_normalize_angle_row(MatrixXd &angles, int row) {
-  for (int i=0; 1<angles.cols(); i++) {
+  for (int i=0; i < angles.cols(); i++) {
     _normalize_angle(angles(row, i));
   }
 }
