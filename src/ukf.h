@@ -72,7 +72,9 @@ private:
   /// Helper functions ///
   void _normalize_angle(double &angle);
   void _normalize_angle(VectorXd &angles);
+  void _normalize_angle_row(MatrixXd &angles, int row);
   void _initialize_weights(VectorXd &weights);
+
 };
 
 

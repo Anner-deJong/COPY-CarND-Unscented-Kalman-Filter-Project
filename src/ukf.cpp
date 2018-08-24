@@ -212,10 +212,7 @@ void UKF::PredictMeanAndCovariance(MatrixXd &Xsig_pred) {
   
   //predict state covariance matrix
   MatrixXd norm_Xsig_pred = Xsig_pred.colwise() - x_;
-  VectorXd tmp_vec = norm_Xsig_pred.row(3);
-  // This way of normalizing seems memory inefficient, isnt there a way to pass the row directly to a function??
-  _normalize_angle(tmp_vec);
-  norm_Xsig_pred.row(3) = tmp_vec;
+  _normalize_angle_row(norm_Xsig_pred, 3);
   MatrixXd weighted_norm_Xsig_pred = norm_Xsig_pred.array() * tiled_weights.array();
   P_ = weighted_norm_Xsig_pred * norm_Xsig_pred.transpose();
   
@@ -251,13 +248,30 @@ void UKF::PredictRadarMeasurement(VectorXd &z_pred, MatrixXd &Zsig, MatrixXd &S_
     _normalize_angle(z_norm(1));
     S_pred += weights_(i) * z_norm * z_norm.transpose();
   }
-  // Adding the measurement covariance noise matrix to state covariance matrix
+  // Adding the measurement covariance noise matrix to the predicted measurement covariance matrix
   S_pred += R_radar;
 }
 
 // Part B step 1b: Predict laser measurements
 void UKF::PredictLaserMeasurement(VectorXd &z_pred, MatrixXd &Zsig, MatrixXd &S_pred, MatrixXd &Xsig_pred) {
-
+  // initialize both predicted measurement and covariance matrix with zeros
+  z_pred.setZero();
+  S_pred.setZero();
+  
+  // calculate mean predicted measurement
+  // better for readability, but for loop will likely be more computationally efficient
+  Zsig = Xsig_pred.block(0, 0, n_z_lsr, 2*n_aug+1).array();
+  MatrixXd Zsig_weighted = Zsig.array().rowwise() * weights_.transpose().array();
+  z_pred = Zsig_weighted.rowwise().sum();
+  
+  //calculate innovation(?) covariance matrix S
+  VectorXd z_norm;
+  for (int i=0 ; i < 2*n_aug + 1 ; i++ ) {
+    z_norm = Zsig.col(i) - z_pred;
+    S_pred += weights_(i) * z_norm * z_norm.transpose();
+  }
+  // Adding the measurement covariance noise matrix to state covariance matrix
+  S_pred += R_radar;
 }
 
 // Part B Step 2: Update state mean and covariance
@@ -302,12 +316,18 @@ void UKF::_initialize_weights(VectorXd &weights) {
 }
 
 // angle normalization
-void UKF::_normalize_angle(double &angle){
+void UKF::_normalize_angle(double &angle) {
   angle = atan2(sin(angle), cos(angle));
 }
-void UKF::_normalize_angle(VectorXd &angles){
+void UKF::_normalize_angle(VectorXd &angles) {
   for (int i=0; i<angles.size(); i++) {
     _normalize_angle(angles[i]);
   }
-  
 }
+void UKF::_normalize_angle_row(MatrixXd &angles, int row) {
+  for (int i=0; 1<angles.cols(); i++) {
+    _normalize_angle(angles(row, i));
+  }
+}
+
+
