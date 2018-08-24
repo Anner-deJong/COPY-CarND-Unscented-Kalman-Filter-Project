@@ -15,16 +15,15 @@ public:
   
   ~UKF();
   
+  // state matrix
   // preferably x_ is a private member variable, only readable through some get_x()
   // current main.cpp implementation however requires direct reading through object.x_ so it is public
-  // state matrix
   Eigen::VectorXd x_;
 
   int a;
   
   // functions
   void ProcessMeasurement(const MeasurementPackage &meas_pack);
-  void printA(Eigen::Matrix2d m);
 
 private:
 
