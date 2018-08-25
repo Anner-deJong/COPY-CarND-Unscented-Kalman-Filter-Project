@@ -26,17 +26,24 @@ public:
   void ProcessMeasurement(const MeasurementPackage &meas_pack);
 
 private:
-
+  
+  // state sizes
   const int n_x; // int to keep track of state size
   const int n_aug; // size of augmentated state space
+  int n_z;           // variable measurement space size
   const int n_z_rdr; // radar measurement space size
   const int n_z_lsr; // laser measurement space size
 
+  // several miscellaneous variables
   bool _initialized; // bool for initialization
-  double lambda; // spreading parameter for sigma point calculation
   double prev_timestamp; // last measurment's timestamp for dt calculation
   double dt; // time difference between measurements in sec
+  
+  // sigma calculations related variables
+  double lambda; // spreading parameter for sigma point calculation
   VectorXd weights_; // weights for part of the prediction and update steps
+  
+  
   
   /// Standard deviations and covariance matrices ///
   // process noise nu
