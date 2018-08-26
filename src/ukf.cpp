@@ -76,6 +76,7 @@ void UKF::ProcessMeasurement(const MeasurementPackage &meas_pack) {
     prev_timestamp = meas_pack.timestamp_;
     x_ = VectorXd(n_x);
     
+    // optional: adjust state covariance matrix P_ according to the first measurement's covariance matrix
     if (meas_pack.sensor_type_ == MeasurementPackage::RADAR) {
       double rho = meas_pack.raw_measurements_[0];
       double phi = meas_pack.raw_measurements_[1];
