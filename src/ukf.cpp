@@ -2,7 +2,12 @@
 #include <iostream>
 #include "Eigen/Dense"
 
-//ctor
+
+
+ /**************
+ * constructor *
+ **************/
+
 UKF::UKF():
   n_x(5),     // state size
   n_aug(7),   // augmented state size
@@ -10,16 +15,22 @@ UKF::UKF():
   n_z_lsr(2)  // laser measurement space size
   
   {
+  
+  // miscellaneous variables
   _initialized = false;
   lambda = 3 - n_x; // spreading parameter
   prev_timestamp = 0; // last measurment's timestamp for dt calculation
   _initialize_weights(weights_);
   
+  // Sigma calculations related variables size initialization
+  Xsig_aug = MatrixXd(n_aug, 2 * n_aug + 1);
+  Xsig_pred = MatrixXd(n_x, 2 * n_aug + 1);
+  
   /// Standard deviations and covariance matrices ///
   
   // process noise nu. TWEAK THESE TWO PARAMS PROPERLY
-  std_a = M_PI/8; // STD - longitudinal acceleration in m/s^2
-  std_yawdd = 2;  // STD - yaw acceleration in rad/s^2
+  std_a = M_PI/4;  // STD - longitudinal acceleration in m/s^2
+  std_yawdd = 0.5; // STD - yaw acceleration in rad/s^2
   
   // Process state (optional, tweak these here or in the initialization step)
   double std_px    = 1;
@@ -48,13 +59,17 @@ UKF::UKF():
   double lsr_std_py = 0.15; // STD - position y in m
   R_laser = MatrixXd(n_z_lsr, n_z_lsr);
   R_laser << lsr_std_px*lsr_std_px, 0,
-             0, lsr_std_py*lsr_std_py;
-  
+             0, lsr_std_py*lsr_std_py;  
   }
 
 //dtor
 UKF::~UKF() {
 }
+
+
+ /***********************************************
+ * Main interaction API for usage of this class *
+ ***********************************************/
 
 void UKF::ProcessMeasurement(const MeasurementPackage &meas_pack) {
   if (!_initialized) {
@@ -72,40 +87,31 @@ void UKF::ProcessMeasurement(const MeasurementPackage &meas_pack) {
     _initialized = true;
     return;
   }
-
-  // else: regular update step
+  
+  /// else: regular update step ///
+  
   // get time elapsed between last two measurements
   dt = (meas_pack.timestamp_ - prev_timestamp) / 1000000.0; //dt expressed in seconds
   prev_timestamp = meas_pack.timestamp_;
   
   ////// Part A: PREDICTION STEP //////
   // Step 1: Generate (augmented) sigma points
-  MatrixXd Xsig_aug(n_aug, 2 * n_aug + 1);
-  AugmentSigmaPoints(Xsig_aug);
+  AugmentSigmaPoints();
   
   // Step 2: Predict sigma points
-  MatrixXd Xsig_pred(n_x, 2 * n_aug + 1);
-  PredictSigmaPoints(Xsig_pred, Xsig_aug);
+  PredictSigmaPoints();
   
   // Step 3: Predict state mean and covariance
-  VectorXd x_pred(n_x);
-  MatrixXd P_pred(n_x, n_x);
-  PredictMeanAndCovariance(Xsig_pred);
+  PredictMeanAndCovariance();
   
   
   ////// Part B: UPDATE STEP //////
   // Step 1: Predict (radar/laser) measurements
-  VectorXd z; // actual raw measurements
-  VectorXd z_pred; // predicted measurements 
-  MatrixXd S_pred; // predicted measurement covariance matrix
-  MatrixXd Zsig; // predicted sigma points in measurement space
    
   if (meas_pack.sensor_type_ == MeasurementPackage::RADAR) {
     // Radar measurement prediction
-    z_pred = VectorXd(n_z_rdr);
-    S_pred = MatrixXd(n_z_rdr, n_z_rdr);
-    Zsig   = MatrixXd(n_z_rdr, 2*n_aug + 1);
-    PredictRadarMeasurement(z_pred, Zsig, S_pred, Xsig_pred);
+    n_z = n_z_rdr;
+    PredictRadarMeasurement();
     
     // filling z with the correct raw measurement data
     z = VectorXd(n_z_rdr);
@@ -114,10 +120,11 @@ void UKF::ProcessMeasurement(const MeasurementPackage &meas_pack) {
   }
   else if (meas_pack.sensor_type_ == MeasurementPackage::LASER) {
     // Lidar measurement prediction
-    z_pred = VectorXd(n_z_lsr);
-    S_pred = MatrixXd(n_z_lsr, n_z_lsr);
-    Zsig   = MatrixXd(n_z_lsr, 2*n_aug + 1);
-    PredictLaserMeasurement(z_pred, Zsig, S_pred, Xsig_pred);
+    // z_pred = VectorXd(n_z_lsr);
+    // S_pred = MatrixXd(n_z_lsr, n_z_lsr);
+    // Zsig   = MatrixXd(n_z_lsr, 2*n_aug + 1);
+    n_z = n_z_lsr;
+    PredictLaserMeasurement();
 
     // filling z with the correct raw measurement data
     z = VectorXd(n_z_lsr);
@@ -131,11 +138,12 @@ void UKF::ProcessMeasurement(const MeasurementPackage &meas_pack) {
 
 
 
-
-/// FUNCTION IMPLEMENTATIONS ///
+ /***************************
+ * FUNCTION IMPLEMENTATIONS *
+ ***************************/
 
 // Part A Step 1: Generate (augmented) sigma points
-void UKF::AugmentSigmaPoints(Eigen::MatrixXd &Xsig_aug) {
+void UKF::AugmentSigmaPoints() {
   
   //create augmented mean state
   VectorXd x_aug(n_aug); 
@@ -161,7 +169,7 @@ void UKF::AugmentSigmaPoints(Eigen::MatrixXd &Xsig_aug) {
 }
 
 // Part A Step 2: Predict sigma points
-void UKF::PredictSigmaPoints(Eigen::MatrixXd &Xsig_pred, Eigen::MatrixXd &Xsig_aug){
+void UKF::PredictSigmaPoints() {
   // double d_t    = delta_t;
   double dt_sq = dt * dt;
   
@@ -199,7 +207,7 @@ void UKF::PredictSigmaPoints(Eigen::MatrixXd &Xsig_pred, Eigen::MatrixXd &Xsig_a
 }
 
 // Part A Step 3: Predict state mean and covariance
-void UKF::PredictMeanAndCovariance(MatrixXd &Xsig_pred) {
+void UKF::PredictMeanAndCovariance() {
   
   //predict state mean
   MatrixXd tiled_weights      = weights_.transpose().replicate(n_x, 1);
@@ -216,8 +224,11 @@ void UKF::PredictMeanAndCovariance(MatrixXd &Xsig_pred) {
 }
 
 // Part B Step 1a: Predict radar measurement
-void UKF::PredictRadarMeasurement(VectorXd &z_pred, MatrixXd &Zsig, MatrixXd &S_pred, MatrixXd &Xsig_pred) {
-  // initialize both predicted measurement and covariance matrix with zeros
+void UKF::PredictRadarMeasurement() {
+  // initialize both predicted measurement and covariance matrix and fill with zeros
+  z_pred = VectorXd(n_z);
+  S_pred = MatrixXd(n_z, n_z);
+  Zsig   = MatrixXd(n_z, 2*n_aug + 1);
   z_pred.setZero();
   S_pred.setZero();
   
@@ -250,8 +261,11 @@ void UKF::PredictRadarMeasurement(VectorXd &z_pred, MatrixXd &Zsig, MatrixXd &S_
 }
 
 // Part B step 1b: Predict laser measurements
-void UKF::PredictLaserMeasurement(VectorXd &z_pred, MatrixXd &Zsig, MatrixXd &S_pred, MatrixXd &Xsig_pred) {
-  // initialize both predicted measurement and covariance matrix with zeros
+void UKF::PredictLaserMeasurement() {
+  // initialize both predicted measurement and covariance matrix and fill with zeros
+  z_pred = VectorXd(n_z);
+  S_pred = MatrixXd(n_z, n_z);
+  Zsig   = MatrixXd(n_z, 2*n_aug + 1);
   z_pred.setZero();
   S_pred.setZero();
   
