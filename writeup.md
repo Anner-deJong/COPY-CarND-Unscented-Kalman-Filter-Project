@@ -10,9 +10,8 @@
 This writeup will give an overview of the extended kalman filter implementation by going through 3 important scripts:
 
 #### [1. main.cpp](#1.-main.cpp),
-#### [2. tools.cpp](#2.-tools.cpp),
-#### [3. FusionEKF.cpp](#3.-FusionEKF.cpp), and
-#### [4. kalman_filter.cpp](#4.-kalman_filter.cpp).
+#### [2. tools.cpp](#2.-tools.cpp), and
+#### [3. ukf.cpp](#3.-FusionEKF.cpp).
 
 ### 1. main.cpp
 
@@ -30,7 +29,7 @@ Upon finishing measurements and making a prediction at each timestep, the averag
 
     MatrixXd Tools::CalculateJacobian(const VectorXd& x_state, const MatrixXd& prev_Hj_)
 
-### 3. FusionEKF.cpp
+### 3. ukf.cpp
 
 This script implements a class (`FusionEKF`) that takes care of keeping around a Kalman filter object:
     
@@ -42,8 +41,6 @@ as well as updating it with new measurements:
 Upon receiving the first measurement through `ProcessMeasurement()`, the measurement argument is used to initialize the Kalman filter object state (other filter matrices get initialized upon construction of the `FusionEKF` object itself, or get created during an update call).
 
 In any following call to `ProcessMeasurement()` a measurement gets used to update the filter object. Again, depending on whether the measurement is from a radar or from a laser sensor, different measurement data is available and different update functions get called. A laser measurement is in cartesian coordinates, and a regular Kalman filter suffices: `KalmanFilter::Update()`. A radar measurement is in polar coordinates, and requires an Extended Kalman filter: `KalmanFilter::UpdateEKF()`.
-
-### 4. kalman_filter.cpp
 
 The kalman filter object has two purposes:
 
@@ -72,7 +69,8 @@ The `UpdateEKF()` function requires some extra care to prevent division by zero 
 Upon testing inside the simulator environment dataset 1, the RMSE output is well under the upper RMSE threshold set by Udacity:
 
 * RMSE: [0.0973, 0.0855, 0.4513, 0.4399]
-* Upper threshold: [.11, .11, 0.52, 0.52]
+* RMSE: [0.0669, 0.0821, 0.3269, 0.2313]
+* Upper threshold: [.09, .10, 0.40, 0.30]
 
 This means my first C++ project's implementation is correct and working well!
 
