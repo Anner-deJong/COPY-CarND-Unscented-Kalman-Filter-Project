@@ -115,25 +115,22 @@ void UKF::ProcessMeasurement(const MeasurementPackage &meas_pack) {
     PredictRadarMeasurement();
     
     // filling z with the correct raw measurement data
-    z = VectorXd(n_z_rdr);
+    z = VectorXd(n_z);
     z << meas_pack.raw_measurements_[0], meas_pack.raw_measurements_[1], meas_pack.raw_measurements_[2];
     
   }
   else if (meas_pack.sensor_type_ == MeasurementPackage::LASER) {
     // Lidar measurement prediction
-    // z_pred = VectorXd(n_z_lsr);
-    // S_pred = MatrixXd(n_z_lsr, n_z_lsr);
-    // Zsig   = MatrixXd(n_z_lsr, 2*n_aug + 1);
     n_z = n_z_lsr;
     PredictLaserMeasurement();
 
     // filling z with the correct raw measurement data
-    z = VectorXd(n_z_lsr);
+    z = VectorXd(n_z);
     z << meas_pack.raw_measurements_[0], meas_pack.raw_measurements_[1];
   }
   
   // Step 2: Update state
-  UpdateState(Xsig_pred, z_pred, z, Zsig, S_pred);
+  UpdateState();
 }
 
 
@@ -287,7 +284,7 @@ void UKF::PredictLaserMeasurement() {
 }
 
 // Part B Step 2: Update state mean and covariance
-void UKF::UpdateState(MatrixXd &Xsig_pred, VectorXd &z_pred, VectorXd &z, MatrixXd &Zsig, MatrixXd &S_pred) {
+void UKF::UpdateState() {
   //create matrix for cross correlation Tc
   MatrixXd Tc = MatrixXd(n_x, z_pred.size());
   Tc.setZero();
@@ -313,6 +310,10 @@ void UKF::UpdateState(MatrixXd &Xsig_pred, VectorXd &z_pred, VectorXd &z, Matrix
   x_ += K * z_diff;
   P_ -= K * S_pred * K.transpose();
 }
+
+
+
+/// Helper functions ///
 
 // initialize weight vector
 void UKF::_initialize_weights(VectorXd &weights) {

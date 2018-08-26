@@ -15,7 +15,7 @@ public:
   
   ~UKF();
   
-  // state matrix
+  // state vector
   // preferably x_ is a private member variable, only readable through some get_x()
   // current main.cpp implementation however requires direct reading through object.x_ so it is public
   Eigen::VectorXd x_;
@@ -83,7 +83,7 @@ private:
   void PredictLaserMeasurement();
   
   // Step 2: Update state mean and covariance
-  void UpdateState(MatrixXd &Xsig_pred, VectorXd &z_pred, VectorXd &z, MatrixXd &Zsig, MatrixXd &S_pred);
+  void UpdateState();
   
   /// Helper functions ///
   void _normalize_angle(double &angle);
